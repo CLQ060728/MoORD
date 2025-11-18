@@ -1,0 +1,164 @@
+# lightning.pytorch==2.5.3
+seed_everything: 88
+trainer:
+  accelerator: auto
+  strategy: 'ddp_spawn'   # 'ddp', 'ddp_spawn', 'ddp_spawn_find_unused_parameters_false (or true, SVDDFM)', 'deepspeed_stage_2', 'deepspeed_stage_3', 'fsdp', 'fsdp_sharded', 'fsdp_sharded_wrap', 'ddp2', 'dp'
+  devices: auto
+  num_nodes: 1
+  precision: null
+  logger: null
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: "accuracy"           # validation metric, e.g. "accuracy", logged by self.log("accuracy", accuracy, prog_bar=True)
+        mode: "max"                   # "min" for loss, "max" for accuracy
+        save_top_k: 1                 # save only the best model
+        filename: "best-{epoch:02d}-accuracy-{accuracy:.4f}"    # 
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: "f1"           # validation metric, e.g. "f1", logged by self.log("f1", f1, prog_bar=True)
+        mode: "max"                   # "min" for loss, "max" for accuracy
+        save_top_k: 1                 # save only the best model
+        filename: "best-{epoch:02d}-f1-{f1:.4f}"     # 
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: "precision"           # validation metric, e.g. "precision", logged by self.log("precision", precision, prog_bar=True)
+        mode: "max"                   # "min" for loss, "max" for accuracy
+        save_top_k: 1                 # save only the best model
+        filename: "best-{epoch:02d}-precision-{precision:.4f}"     #
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: "recall"           # validation metric, e.g. "recall", logged by self.log("recall", recall, prog_bar=True)
+        mode: "max"                   # "min" for loss, "max" for accuracy
+        save_top_k: 1                 # save only the best model
+        filename: "best-{epoch:02d}-recall-{recall:.4f}"     #
+    # - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+    #   init_args:
+    #     every_n_epochs: 50            # save every 50 epochs
+    #     save_top_k: -1                # save all checkpoints at this frequency
+    #     filename: "epoch{epoch:02d}"
+    - class_path: lightning.pytorch.callbacks.TQDMProgressBar
+      init_args:
+        refresh_rate: 10              # how often to update the progress bar (in steps)
+    # - class_path: lightning.pytorch.callbacks.StochasticWeightAveraging
+    #   init_args:
+    #     swa_lrs: 6e-5                 # or 3e-5, 1/5 or 1/10 of optim learning_rate. learning rate for SWA
+    #     swa_epoch_start: 76           # starting epoch for SWA
+    #     annealing_epochs: 10          # number of epochs for annealing
+    #     annealing_strategy: 'cos'     # 'cos' or 'linear'
+    # - class_path: lightning.pytorch.callbacks.ModelSummary
+    #   init_args:
+    #     max_depth: -1      # detailed model summary for sub modules, default is 1
+  fast_dev_run: false
+  max_epochs: 50
+  min_epochs: null
+  max_steps: -1
+  min_steps: null
+  max_time: null
+  limit_train_batches: null
+  limit_val_batches: null
+  limit_test_batches: null
+  limit_predict_batches: null
+  overfit_batches: 0.0
+  val_check_interval: null
+  check_val_every_n_epoch: 1
+  num_sanity_val_steps: 0
+  log_every_n_steps: 20
+  enable_checkpointing: true
+  enable_progress_bar: true
+  enable_model_summary: true
+  accumulate_grad_batches: 1
+  gradient_clip_val: null
+  gradient_clip_algorithm: null
+  deterministic: null
+  benchmark: null
+  inference_mode: true
+  use_distributed_sampler: true
+  profiler: null
+  detect_anomaly: false
+  barebones: false
+  plugins: null
+  sync_batchnorm: false
+  reload_dataloaders_every_n_epochs: 0
+  default_root_dir: './output/'
+  model_registry: null
+model:
+  model_mode: SVDDFM                              # ['SVDDFM', 'SVD_DFM', 'SVD', 'FEAT_LINEAR', 'FEAT'], the model type to use
+  svd_dfm:
+    svd_dfm_with_dfd: true                         # whether to use DFD loss when model_mode is 'SVD_DFM'
+    svd_chkpt_path: null                           # the path to the pretrained SVD model checkpoint, if None, train from scratch
+  model_type: DINO_V3                             # ['CLIP', 'DINO_V2', 'DINO_V3'], the pretrained model type to use
+  feat_extractor_type: null                       # ['CLIP', 'DINO_V2', 'DINO_V3'], the pretrained model type to use when model_mode is 'FEAT' or 'FEAT_LINEAR'
+  model_configs: 
+    ClipSVDDFM:                                    # CLIP model for both SVD and SVDDFM
+      dfm: True                                    # whether to train the disentangled fake manifolds
+      dfm_num_layers: 2                            # the number of layers for the manifold network
+      dfm_aggr: 'SUM'                              # ['SUM', 'CONCAT'], the aggregation method for the manifold features
+      out_feat_type: 'HIDDEN'                      # ['HIDDEN', 'CLS'], the latent feature to use for pretrained ViT models          
+      chkpt_dir: './pre_trained/OPENAI_CLIP/'      # the root chkpt path for the pretrained CLIP model
+    Dinov2SVDDFM:                                  # DINO_V2 model for both SVD and SVDDFM
+      dfm: True                                    # whether to train the disentangled fake manifolds
+      dfm_num_layers: 2                            # the number of layers for the manifold network
+      dfm_aggr: 'SUM'                              # ['SUM', 'CONCAT'], the aggregation method for the manifold features
+      out_feat_type: 'HIDDEN'                      # ['HIDDEN', 'CLS'], the latent feature to use for pretrained ViT models
+      chkpt_dir: './pre_trained/META_DINOV2/'      # the root chkpt path for the pretrained DINOV2 model
+    Dinov3SVDDFM:                                  # DINO_V3 model for both SVD and SVDDFM
+      dfm: True                                    # whether to train the disentangled fake manifolds
+      dfm_num_layers: 2                            # the number of layers for the manifold network
+      dfm_aggr: 'SUM'                              # ['SUM', 'CONCAT'], the aggregation method for the manifold features
+      out_feat_type: 'HIDDEN'                      # ['HIDDEN', 'CLS'], the latent feature to use for pretrained ViT models
+      model_type: 'LVD'                            # ['LVD', 'SAT'], the pretrain datasets for DINOV3 models, "LVD-1689M" or "SAT-493M"
+      chkpt_dir: './pre_trained/META_DINOV3/'      # the chkpt path for the pretrained DINOV3 model
+    ClipFeatureExtractor:                          # CLIP model for both FEAT and FEAT_LINEAR
+      as_linear_classifier: false                  # whether to use a linear classifier on top of frozen CLIP features
+      chkpt_dir: './pre_trained/OPENAI_CLIP/'      # the root chkpt path for the pretrained CLIP model
+    Dinov2FeatureExtractor:                        # DINO_V2 model for both FEAT and FEAT_LINEAR
+      as_linear_classifier: false                  # whether to use a linear classifier on top of frozen DINOV2 features
+      chkpt_dir: './pre_trained/META_DINOV2/'      # the root chkpt path for the pretrained DINOV2 model
+    Dinov3FeatureExtractor:                        # DINO_V3 model for both FEAT and FEAT_LINEAR
+      pre_ds: 'LVD'                                # ['LVD', 'SAT'], the pretrain datasets for DINOV3 models, "LVD-1689M" or "SAT-493M"
+      as_linear_classifier: false                  # whether to use a linear classifier on top of frozen DINOV3 features
+      chkpt_dir: './pre_trained/META_DINOV3/'      # the root chkpt path for the pretrained DINOV3 model
+  loss_configs:
+    DFDLoss:                                       # Deep Fake Detection loss
+      coef: 1.0                                    # weight of this loss function during training
+    SVDLoss:                                       # Singular Value Decomposition losses, including Orthogonal loss and Keeping Singular Values loss
+      coef: 1.0                                    # weight of this loss function during training
+    ReconstructionLoss:                            # Reconstruction loss
+      coef: 0.1                                    # weight of this loss function during training
+      loss_type: 'l2'                              # ['l1', 'smooth_l1', 'l2'], the type of reconstruction loss function
+    ReconRegLoss:                                  # Reconstruction Regularization loss
+      beta_3_max: 0.1                              # maximum weight value during training, decaying during training
+    DistanceSparsity:                              
+      beta_1_start: 0.01                           # starting value to scale coefficient for distance and sparcity losses training
+      beta_1_end: 0.1                              # max value to scale coefficient for distance and sparcity losses training
+    ConsistencyLoss:
+      beta_2_max: 0.1                              # max value to scale coefficient for consistency loss during training
+  optim_configs:                                   # configurations for optimization
+    learning_rate: 3e-4                            # learning_rate for training
+    # scheduler_T_max: 100                           # T_max for CosineAnnealingLR scheduler
+    do_reconstruction: true                        # whether to use latent space encoder-decoder feature reconstruction loss
+    use_recon_reg_loss: true                       # whether to use regularization loss function during training to avoid disentangled manifolds crashing
+    dfm_start_epoch: 30                            # starting epoches to train the disentangled fake manifolds
+    dissparcons_start_epoch: 35                    # starting epoches to use distance,  sparcity and consistency losses and also the regularization loss when it's enabled
+  inference_configs: 
+    save_dir: './output/features/'            # the directory to save the inference results
+    metrics_eval: true                       # whether to evaluate the metrics for prediction
+    save_features: false                       # whether to save all the extracted features for prediction
+data:
+  model_type: 'DINO_V3_LVD'                                  # ["CLIP", "DINO_V2", "DINO_V3_LVD", "DINO_V3_SAT"] for image transformations, different models have different types
+  train_dataset_path: '/root/WORKSPACE/DFDDFM/data/train/'   # ['data/train']
+  val_dataset_path: '/root/WORKSPACE/DFDDFM/data/val/'       # ['data/val']
+  test_dataset_path: '/root/WORKSPACE/DFDDFM/data/test/'     # ['data/test']
+  predict_dataset_path: ''                                   # str The path to the inference/prediction dataset. If provided, will run prediction instead of testing.
+  dfd_idxes_path: ''                                         # str 'inference/dfd_indices.json', The path to the deepfake detection classes indices. Required if predict_dataset_path is provided.
+  manifolds_paths:                                           # List[str] the paths to the manifolds images paths
+    - 'Real'
+    - 'Midjourney'
+  manifolds_indices_path: 'data/manifolds_indices_1.json' # str The path to the mapping of the corresponding manifolds' indices.
+  sem_idxes_path: ''                                      # str The path to the semantic classes indices. Required if test_dataset_path or predict_dataset_path is provided.
+  feat_only: false                                        # bool If True, only load the features without labels for inference/prediction.
+  imgs_order_path: ''                                     # str data/imgs_order.txt, The path to the images order file. Required if feat_only is True.
+  batch_size: 160                                         # batch size for training
+  num_workers: 8                                          # number of workers for data loading
+
